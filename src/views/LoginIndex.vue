@@ -1,7 +1,8 @@
 <script setup>
 import {ref} from "vue";
-
+import { useRouter } from 'vue-router'
 const islogin=ref(true)
+const router = useRouter()
 const loginForm = ref({
   username: '',
   password: ''
@@ -16,10 +17,16 @@ const registerForm = ref({
 function change(){
   islogin.value=!islogin.value
 }
+
+function gohome(){
+  router.push('/home')
+}
 </script>
 
 <template>
+
   <div class="login-container">
+
     <el-card>
       <!-- 登录表单 -->
       <el-form v-if="islogin" label-width="80px">
@@ -31,7 +38,7 @@ function change(){
         <el-form-item label="密码">
           <el-input type="password" v-model="loginForm.password" show-password />
         </el-form-item>
-        <el-button type="primary" @click="change">登录</el-button>
+        <el-button type="primary" @click="gohome">登录</el-button>
         <p @click="change">没有账号？注册</p>
       </el-form>
 
@@ -65,6 +72,7 @@ function change(){
       </el-form>
       </el-card>
   </div>
+  <router-view></router-view>
 </template>
 
 <style scoped>
