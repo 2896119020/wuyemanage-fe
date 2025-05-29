@@ -49,10 +49,13 @@ function gohome(){
         <el-form-item label="用户名">
           <el-input v-model="registerForm.username" />
         </el-form-item>
-        <el-form-item label="楼号">
+        <el-form-item label="楼栋号">
           <el-input v-model="registerForm.email" />
         </el-form-item>
-        <el-form-item label="门牌号">
+        <el-form-item label="单元号">
+          <el-input v-model="registerForm.email" />
+        </el-form-item>
+        <el-form-item label="房间号">
           <el-input v-model="registerForm.email" />
         </el-form-item>
         <el-form-item label="手机号">
