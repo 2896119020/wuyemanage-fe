@@ -1,13 +1,23 @@
+@vue/cli-service
 <script setup>
 import {ref} from "vue";
 import { useRouter } from 'vue-router'
+import axios from 'axios';
+import User from "../entity/User";  // 或具体路径
+import Property from "../entity/Property";
+import Owner from "../entity/Owner";
 const islogin=ref(true)
 const router = useRouter()
 const loginForm = ref({
   username: '',
   password: ''
 })
-
+const loginResponse = ref({
+  success: false,
+  message: '',
+  role: null,
+  userDetails: null
+});
 const registerForm = ref({
   username: '',
   email: '',
@@ -18,8 +28,46 @@ function change(){
   islogin.value=!islogin.value
 }
 
-function gohome(){
-  router.push('/home')
+async function gohome() {
+  try {
+    const response = await axios.post('http://localhost:8085/login', {
+      userID: loginForm.value.username,
+      password: loginForm.value.password
+    });
+
+    // 无论 success 是否为 true，都存储返回值
+    loginResponse.value = response.data;
+    alert("登录成功，返回值："+loginResponse.value.userDetails);
+
+    if (loginResponse.value.success) {
+      switch (loginResponse.value.role.toUpperCase()) {
+        case 'PROPERTY':
+          loginResponse.value.userDetails = Property.fromJavaObject(loginResponse.value.userDetails);
+          break;
+        case 'OWNER':
+          loginResponse.value.userDetails = Owner.fromJavaObject(loginResponse.value.userDetails);
+          break;
+        case 'ADMIN':
+          alert("登录成功，返回值："+loginResponse.value.role);
+          loginResponse.value.userDetails = User.fromJavaString(loginResponse.value.userDetails);
+          alert("登录成功，返回值：");
+          break;
+        default:
+          console.warn(`未知角色类型: ${loginResponse.value.role}`);
+      }
+
+    }
+
+
+
+
+    // 无论返回结果如何，都跳转到 /home
+    router.push('/home');
+  } catch (error) {
+    console.error('请求失败:', error);
+    // 即使请求失败，也跳转到 /home
+    router.push('/home');
+  }
 }
 </script>
 
