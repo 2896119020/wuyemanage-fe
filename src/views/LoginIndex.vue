@@ -30,11 +30,11 @@ async function handleLogin() {
     const role = store.state.user?.role?.toUpperCase()
     if (role === 'ADMIN') {
       //router.push('/admin/dashboard')
-      router.push('/home')
+      router.push('/adminhomepage')
     } else if (role === 'PROPERTY') {
-      router.push('/property')
+      router.push('/propertyhomepage')
     } else {
-      router.push('/home')
+      router.push('/ownerhomepage')
     }
   } catch (error) {
     // 错误信息已经在store中，可以通过store.state.loginError获取

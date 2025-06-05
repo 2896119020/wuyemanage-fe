@@ -7,7 +7,7 @@
       </div>
       <div class="header-right">
         <div class="user-info">
-          <span class="username">当前用户: {{user.userDetails.username}}</span>
+          <span class="username">当前用户: {{ userName }}</span>
           <i class="el-icon-user"></i>
         </div>
       </div>
@@ -27,25 +27,15 @@
               <i class="el-icon-user"></i>
               <span>人员管理</span>
             </template>
-            <el-menu-item index="1-1">物业人员</el-menu-item>
-            <el-menu-item index="1-2">业主管理</el-menu-item>
+            <el-menu-item index="1-1">物业人员管理</el-menu-item>
+            <el-menu-item index="1-2">更改个人信息</el-menu-item>
           </el-submenu>
           <el-submenu index="2">
             <template #title>
               <i class="el-icon-office-building"></i>
               <span>物业管理</span>
             </template>
-            <el-menu-item index="2-1">楼栋管理</el-menu-item>
-            <el-menu-item index="2-2">房屋管理</el-menu-item>
           </el-submenu>
-          <el-menu-item index="3">
-            <i class="el-icon-document"></i>
-            <span>工单管理</span>
-          </el-menu-item>
-          <el-menu-item index="4">
-            <i class="el-icon-setting"></i>
-            <span>系统设置</span>
-          </el-menu-item>
         </el-menu>
       </aside>
 
@@ -66,45 +56,9 @@
               </div>
             </template>
             <div class="quick-actions">
-              <el-button type="primary" icon="el-icon-user" @click="manageStaff">管理物业人员</el-button>
-              <el-button type="success" icon="el-icon-office-building">楼栋管理</el-button>
-              <el-button type="warning" icon="el-icon-document">工单管理</el-button>
-            </div>
-          </el-card>
-
-          <el-card class="box-card" style="margin-top: 20px;">
-            <template #header>
-              <div class="clearfix">
-                <span>系统概览</span>
-              </div>
-            </template>
-            <div class="stats-container">
-              <el-row :gutter="20">
-                <el-col :span="6">
-                  <div class="stat-card">
-                    <div class="stat-title">物业人员</div>
-                    <div class="stat-value">25</div>
-                  </div>
-                </el-col>
-                <el-col :span="6">
-                  <div class="stat-card">
-                    <div class="stat-title">楼栋数量</div>
-                    <div class="stat-value">8</div>
-                  </div>
-                </el-col>
-                <el-col :span="6">
-                  <div class="stat-card">
-                    <div class="stat-title">待处理工单</div>
-                    <div class="stat-value">12</div>
-                  </div>
-                </el-col>
-                <el-col :span="6">
-                  <div class="stat-card">
-                    <div class="stat-title">系统消息</div>
-                    <div class="stat-value">3</div>
-                  </div>
-                </el-col>
-              </el-row>
+              <el-button type="primary" icon="el-icon-user" @click="manageStaff">
+                管理物业人员
+              </el-button>
             </div>
           </el-card>
         </div>
@@ -114,7 +68,7 @@
     <!-- 页脚 -->
     <footer class="admin-footer">
       <div class="footer-content">
-        <p>© 2023 管理系统 版权所有</p>
+        <p>© 2025 管理系统 版权所有</p>
       </div>
     </footer>
   </div>
@@ -122,28 +76,24 @@
 
 <script>
 import store from "../store";
+
 export default {
   name: 'AdminDashboard',
   computed: {
-    store() {
-      return store
+    userName() {
+      return store.state.user?.userDetails?.username || '未登录用户'
     }
-  },
-  data() {
-    return {
-      user: store.state.user
-    };
   },
   methods: {
     manageStaff() {
-      // 管理物业人员的逻辑
-      console.log('管理物业人员');
+      this.$router.push('/staff-management')
     }
   }
-};
+}
 </script>
 
 <style scoped>
+/* 基础布局样式 */
 .admin-container {
   display: flex;
   flex-direction: column;
@@ -151,6 +101,7 @@ export default {
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
 }
 
+/* 顶部导航栏样式 */
 .admin-header {
   height: 60px;
   background-color: #409EFF;
@@ -177,63 +128,53 @@ export default {
   margin-right: 10px;
 }
 
+/* 主体内容区域 */
 .admin-main {
   display: flex;
   flex: 1;
+  min-height: calc(100vh - 110px); /* 减去header和footer高度 */
 }
 
 .admin-sidebar {
   width: 220px;
   background-color: #545c64;
+  color: white;
 }
 
 .el-menu-vertical {
   border-right: none;
+  height: 100%;
 }
 
 .admin-content {
   flex: 1;
   padding: 20px;
   background-color: #f0f2f5;
+  overflow-y: auto;
 }
 
+/* 内容区域样式 */
 .content-header {
   margin-bottom: 20px;
 }
 
 .content-header h2 {
   margin: 0 0 10px 0;
+  color: #303133;
 }
 
 .box-card {
   margin-bottom: 20px;
+  border-radius: 4px;
 }
 
 .quick-actions {
   display: flex;
   gap: 15px;
+  flex-wrap: wrap;
 }
 
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.stat-title {
-  color: #909399;
-  font-size: 14px;
-  margin-bottom: 10px;
-}
-
-.stat-value {
-  color: #303133;
-  font-size: 24px;
-  font-weight: bold;
-}
-
+/* 页脚样式 */
 .admin-footer {
   height: 50px;
   background-color: #eef1f6;
@@ -242,5 +183,21 @@ export default {
   align-items: center;
   color: #909399;
   font-size: 14px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .admin-main {
+    flex-direction: column;
+  }
+
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+  }
+
+  .quick-actions {
+    flex-direction: column;
+  }
 }
 </style>
