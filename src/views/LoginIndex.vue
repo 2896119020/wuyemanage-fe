@@ -27,10 +27,10 @@ function change() {
 async function handleLogin() {
   try {
     await store.dispatch('login', loginForm.value)
-    // 登录成功后根据角色跳转不同页面
     const role = store.state.user?.role?.toUpperCase()
     if (role === 'ADMIN') {
-      router.push('/admin/dashboard')
+      //router.push('/admin/dashboard')
+      router.push('/home')
     } else if (role === 'PROPERTY') {
       router.push('/property')
     } else {

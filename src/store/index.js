@@ -1,8 +1,6 @@
 import { createStore } from 'vuex'
 import axios from 'axios'
-import Property from "../entity/Property"
-import Owner from "../entity/Owner"
-import User from "../entity/User"
+
 
 export default createStore({
   state: {
@@ -39,35 +37,19 @@ export default createStore({
           password: credentials.password
         })
             .then(response => {
-              const data = response.data
-              let userDetails
+              const data = response.data;
 
-              switch (data.role.toUpperCase()) {
-                case 'PROPERTY':
-                  userDetails = Property.fromJavaObject(data.userDetails)
-                  break
-                case 'OWNER':
-                  userDetails = Owner.fromJavaObject(data.userDetails)
-                  break
-                case 'ADMIN':
-                  userDetails = User.fromJavaString(data.userDetails)
-                  break
-                default:
-                  console.warn(`未知角色类型: ${data.role}`)
+              // 如果登录失败
+              if (!data.success) {
+                const errorMessage = data.message || '登录失败，请检查用户名和密码';
+                commit('SET_LOGIN_ERROR', errorMessage);
+                return reject(new Error(errorMessage)); // 主动 reject
               }
 
-              commit('SET_USER', {
-                ...data,
-                userDetails
-              })
-              resolve(data)
-            })
-            .catch(error => {
-              const errorMessage = error.response?.data?.message ||
-                  error.message ||
-                  '登录失败，请检查网络'
-              commit('SET_LOGIN_ERROR', errorMessage)
-              reject(error)
+              // 登录成功时处理数据
+              const { role, userDetails } = data;
+              commit('SET_USER', { role, userDetails });
+              resolve(data);
             })
       })
     },

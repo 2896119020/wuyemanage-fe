@@ -7,7 +7,7 @@
       </div>
       <div class="header-right">
         <div class="user-info">
-          <span class="username">当前用户: 张三</span>
+          <span class="username">当前用户: {{user.userDetails.username}}</span>
           <i class="el-icon-user"></i>
         </div>
       </div>
@@ -121,11 +121,17 @@
 </template>
 
 <script>
+import store from "../store";
 export default {
   name: 'AdminDashboard',
+  computed: {
+    store() {
+      return store
+    }
+  },
   data() {
     return {
-      username: '张三'
+      user: store.state.user
     };
   },
   methods: {
