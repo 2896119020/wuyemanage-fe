@@ -38,18 +38,23 @@ export default createStore({
         })
             .then(response => {
               const data = response.data;
-              alert(data.userDetails.username)
               // 如果登录失败
               if (!data.success) {
                 const errorMessage = data.message || '登录失败，请检查用户名和密码';
                 commit('SET_LOGIN_ERROR', errorMessage);
                 return reject(new Error(errorMessage)); // 主动 reject
               }
-
+              //物业人员的name:alert(data.userDetails.user.username)
+              if (data.role=='PROPERTY'){
+                commit('SET_USER', data);
+                resolve(data);
+              }else {
+                const { role, userDetails } = data;
+                commit('SET_USER', { role, userDetails });
+                resolve(data);
+              }
               // 登录成功时处理数据
-              const { role, userDetails } = data;
-              commit('SET_USER', { role, userDetails });
-              resolve(data);
+
             })
       })
     },

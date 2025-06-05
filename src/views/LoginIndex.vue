@@ -59,7 +59,6 @@ async function handleLogin() {
           <el-input type="password" v-model="loginForm.password" show-password />
         </el-form-item>
         <el-button type="primary" @click="handleLogin">登录</el-button>
-        <p @click="change">没有账号？注册</p>
       </el-form>
 
       <!-- 注册表单 -->

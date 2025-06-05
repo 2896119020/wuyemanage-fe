@@ -27,7 +27,9 @@
               <i class="el-icon-user"></i>
               <span>人员管理</span>
             </template>
-            <el-menu-item index="1-1">物业人员管理</el-menu-item>
+            <el-menu-item index="1-2">公告管理</el-menu-item>
+            <el-menu-item index="1-2">水电费管理</el-menu-item>
+            <el-menu-item index="1-2">报修处理</el-menu-item>
             <el-menu-item index="1-2">更改个人信息</el-menu-item>
           </el-submenu>
           <el-submenu index="2">
@@ -56,8 +58,8 @@
               </div>
             </template>
             <div class="quick-actions">
-              <el-button type="primary" icon="el-icon-user" @click="manageStaff">
-                管理物业人员
+              <el-button type="primary" icon="el-icon-user" @click="addowner">
+                添加住户
               </el-button>
             </div>
           </el-card>
@@ -81,12 +83,12 @@ export default {
   name: 'AdminDashboard',
   computed: {
     userName() {
-      return store.state.user?.userDetails?.username || '未登录用户'
+      return store.state.user?.userDetails?.user?.username || '未登录用户'
     }
   },
   methods: {
-    manageStaff() {
-      this.$router.push('/staff-management')
+    addowner() {
+      this.$router.push('/addowner')
     }
   }
 }

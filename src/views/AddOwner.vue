@@ -1,0 +1,198 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
+
+const router = useRouter()
+
+// 楼号选项
+const buildingOptions = ref([
+  { value: '1', label: '1号楼' },
+  { value: '2', label: '2号楼' },
+  { value: '3', label: '3号楼' },
+])
+
+// 门牌号选项（根据楼号动态变化）
+const doorOptions = computed(() => {
+  if (!registerForm.value.buildingNumber) return []
+
+  const base = parseInt(registerForm.value.buildingNumber) * 100
+  return [
+    { value: `${base + 1}`, label: `${base + 1}室` },
+    { value: `${base + 2}`, label: `${base + 2}室` },
+    { value: `${base + 3}`, label: `${base + 3}室` },
+    { value: `${base + 4}`, label: `${base + 4}室` },
+  ]
+})
+
+// 注册表单数据
+const registerForm = ref({
+  username: '',
+  phone: '',          // 手机号（选填）
+  email: '',          // 邮箱（选填）
+  password: '',       // 密码
+  confirmPassword: '', // 确认密码
+  buildingNumber: '', // 楼号
+  doorNumber: '',     // 门牌号
+})
+
+async function submitRegister() {
+  // 验证两次密码是否一致
+  if (registerForm.value.password !== registerForm.value.confirmPassword) {
+    alert('两次输入的密码不一致')
+    return
+  }
+
+  // 验证必填字段
+  if (!registerForm.value.username || !registerForm.value.password) {
+    alert('用户名和密码为必填项')
+    return
+  }
+
+  try {
+    // 准备提交数据，过滤空的可选字段
+    const payload = {
+      username: registerForm.value.username,
+      password: registerForm.value.password,
+      buildingNumber: registerForm.value.buildingNumber,
+      doorNumber: registerForm.value.doorNumber,
+      ...(registerForm.value.phone && { phone: registerForm.value.phone }),
+      ...(registerForm.value.email && { email: registerForm.value.email })
+    }
+
+    // 🔥 使用 axios 直接发送 POST 请求到后端接口
+    const response = await axios.post('http://localhost:8085/OwnerSign', payload, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    // 判断响应是否成功
+    if (response.data && response.data.success) {
+      alert('添加成功')
+      // 跳转到管理首页
+      router.push('/propertyhomepage')
+    } else {
+      alert('添加失败: ' + (response.data.message || '未知错误'))
+    }
+  } catch (error) {
+    console.error('注册失败:', error)
+    let message = '添加失败，请稍后再试'
+    if (error.response && error.response.data && error.response.data.message) {
+      message = error.response.data.message
+    } else if (error.message) {
+      message = error.message
+    }
+    alert(message)
+  }
+}
+</script>
+
+<template>
+  <div class="register-container">
+    <el-card>
+      <el-form label-width="100px">
+        <h2>添加业主</h2>
+
+        <el-form-item label="用户名" required>
+          <el-input
+              v-model="registerForm.username"
+              placeholder="请输入用户名"
+              clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="楼号">
+          <el-select
+              v-model="registerForm.buildingNumber"
+              placeholder="请选择楼号"
+              clearable
+          >
+            <el-option
+                v-for="item in buildingOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="门牌号">
+          <el-select
+              v-model="registerForm.doorNumber"
+              placeholder="请先选择楼号"
+              :disabled="!registerForm.buildingNumber"
+              clearable
+          >
+            <el-option
+                v-for="item in doorOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="手机号">
+          <el-input
+              v-model="registerForm.phone"
+              placeholder="选填"
+              clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="邮箱">
+          <el-input
+              v-model="registerForm.email"
+              placeholder="选填"
+              clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="密码" required>
+          <el-input
+              type="password"
+              v-model="registerForm.password"
+              show-password
+              placeholder="请输入密码"
+          />
+        </el-form-item>
+
+        <el-form-item label="确认密码" required>
+          <el-input
+              type="password"
+              v-model="registerForm.confirmPassword"
+              show-password
+              placeholder="请再次输入密码"
+          />
+        </el-form-item>
+
+        <el-button
+            type="primary"
+            @click="submitRegister"
+            style="width: 100%"
+        >
+          立即注册
+        </el-button>
+      </el-form>
+    </el-card>
+  </div>
+</template>
+
+<style scoped>
+.register-container {
+  width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.el-form-item {
+  margin-bottom: 22px;
+}
+</style>

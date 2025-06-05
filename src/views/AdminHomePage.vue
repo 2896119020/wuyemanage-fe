@@ -56,8 +56,8 @@
               </div>
             </template>
             <div class="quick-actions">
-              <el-button type="primary" icon="el-icon-user" @click="manageStaff">
-                管理物业人员
+              <el-button type="primary" icon="el-icon-user" @click="addStaff">
+                添加物业人员
               </el-button>
             </div>
           </el-card>
@@ -85,8 +85,8 @@ export default {
     }
   },
   methods: {
-    manageStaff() {
-      this.$router.push('/staff-management')
+    addStaff() {
+      this.$router.push('/addstaff')
     }
   }
 }

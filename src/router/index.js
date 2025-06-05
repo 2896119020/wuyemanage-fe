@@ -21,7 +21,16 @@ const routes=[
         path:'/propertyhomepage',
         name:'propertyhomepage',
         component:() =>import('../views/PropertyHomePage.vue')
+    },{
+        path:'/addstaff',
+        name:'addstaff',
+        component:() =>import('../views/AddStaff.vue')
     },
+    {
+        path:'/addowner',
+        name:'addowner',
+        component:() =>import('../views/AddOwner.vue')
+    }
 ]
 
 const router =createRouter({
