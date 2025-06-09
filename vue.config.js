@@ -1,17 +1,20 @@
 const { defineConfig } = require('@vue/cli-service')
+
 module.exports = defineConfig({
-  transpileDependencies: true
-})
-module.exports = {
+  transpileDependencies: true,
   devServer: {
     proxy: {
-      '/api': {                          // 拦截/api开头的请求
-        target: 'http://localhost:8085', // 后端地址
-        changeOrigin: true,              // 启用跨域
+      '/api': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
         pathRewrite: {
-          '^/api': ''                    // 重写路径
+          '^/api': ''
         }
       }
+    },
+    client: {
+      overlay: false // 👈 关闭浏览器报错覆盖层
     }
   }
-}
+});
+

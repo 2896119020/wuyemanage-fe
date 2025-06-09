@@ -54,7 +54,7 @@
 
         <div class="content-main">
           <!-- 首页内容 -->
-          <div v-if="activeMenu === 'home'">
+          <div v-show="activeMenu === 'home'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
@@ -70,7 +70,7 @@
           </div>
 
           <!-- 公告管理内容 -->
-          <div v-if="activeMenu === '1-1'">
+          <div v-show="activeMenu === '1-1'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
@@ -78,13 +78,14 @@
                   <el-button style="float: right; padding: 3px 0" type="text" @click="addNotice">添加公告</el-button>
                 </div>
               </template>
-              <el-table :data="noticeData" style="width: 100%">
+              <el-table :data="noticeData" style="width: 100%" height="400">
                 <el-table-column prop="title" label="标题" width="180"></el-table-column>
                 <el-table-column prop="content" label="内容"></el-table-column>
+                <el-table-column prop="name" label="发布人"></el-table-column>
                 <el-table-column prop="date" label="发布日期" width="180"></el-table-column>
                 <el-table-column label="操作" width="120">
                   <template #default="scope">
-                    <el-button size="mini" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
+                    <el-button size="mini" @click="handleEdit(scope.$index, scope.row)">删除</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -92,7 +93,7 @@
           </div>
 
           <!-- 水电费管理内容 -->
-          <div v-if="activeMenu === '1-2'">
+          <div v-show="activeMenu === '1-2'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
@@ -104,7 +105,7 @@
           </div>
 
           <!-- 报修处理内容 -->
-          <div v-if="activeMenu === '1-3'">
+          <div v-show="activeMenu === '1-3'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
@@ -118,6 +119,25 @@
       </main>
     </div>
 
+    <!-- 添加公告对话框 -->
+    <el-dialog title="添加公告" v-model="addDialogVisible" width="500px" @close="resetAddForm">
+      <el-form :model="addForm" :rules="addRules" ref="addForm" label-width="80px">
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="addForm.title"></el-input>
+        </el-form-item>
+        <el-form-item label="内容" prop="content">
+          <el-input type="textarea" v-model="addForm.content" :rows="4"></el-input>
+        </el-form-item>
+
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAddForm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 页脚 -->
     <footer class="admin-footer">
       <div class="footer-content">
@@ -129,42 +149,58 @@
 
 <script>
 import store from "../store";
+import axios from "axios";
 
 export default {
   name: 'AdminDashboard',
   data() {
     return {
-      activeMenu: 'home', // 当前激活的菜单项
-      currentTitle: '欢迎使用管理系统', // 当前标题
-      noticeData: [
-        {
-          title: '停水通知',
-          content: '明天上午9点至下午3点进行水管维修，届时将暂停供水',
-          date: '2023-05-10'
-        },
-        {
-          title: '物业费缴纳',
-          content: '请各位业主于本月15日前缴纳第二季度物业费',
-          date: '2023-05-05'
-        }
-      ]
+      activeMenu: 'home',
+      currentTitle: '欢迎使用管理系统',
+      noticeData: [],
+      addDialogVisible: false,
+      addForm: {
+        title: '',
+        content: '',
+        uploaderId:null
+
+      },
+      addRules: {
+        title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
+        content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
+      }
     }
   },
   computed: {
     userName() {
-      return store.state.user?.userDetails?.user?.username || '未登录用户'
+      return store.state.user?.userDetails?.user?.username || '未登录用户';
+    },
+    userId() {
+      return store.state.user?.userDetails?.propertyID;
     }
+  },
+  mounted() {
+    this.fetchAnnouncements();
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+
+      // 在 created 或 mounted 中赋值
+      this.addForm.uploaderId = this.userId;
   },
   methods: {
     addowner() {
-      this.$router.push('/addowner')
+      this.$router.push('/addowner');
     },
     handleMenuSelect(index) {
       this.activeMenu = index;
-      // 根据选择的菜单更新标题
       switch(index) {
         case '1-1':
           this.currentTitle = '公告管理';
+          this.fetchAnnouncements();
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+          });
           break;
         case '1-2':
           this.currentTitle = '水电费管理';
@@ -179,26 +215,99 @@ export default {
           this.currentTitle = '欢迎使用管理系统';
       }
     },
+    async fetchAnnouncements() {
+      try {
+        const response = await axios.post('/api/getAnnouncementList');
+        this.noticeData = response.data.map(item => ({
+          id: item.announcementId,
+          title: item.title,
+          content: item.content,
+          name: item.uploaderName,
+          date: new Date(item.uploadTime).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }));
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
+      } catch (error) {
+        this.$message.error('公告获取失败，请稍后重试');
+        console.error(error);
+      }
+    },
     addNotice() {
-      // 添加公告的逻辑
-      this.$message.success('添加公告功能待实现');
+      this.addDialogVisible = true;
+    },
+    resetAddForm() {
+      this.$refs.addForm.resetFields();
+    },
+    async submitAddForm() {
+      this.addDialogVisible = true;
+      this.addForm.uploaderId = this.userId;
+      this.$refs.addForm.validate(async valid => {
+        if (valid) {
+          try {
+            const res = await axios.post('/api/createAnnouncement', this.addForm, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (res.data === true) {
+              this.$message.success('公告添加成功');
+              this.addDialogVisible = false;
+              this.fetchAnnouncements();
+              this.resetAddForm();
+            } else {
+              this.$message.error('公告添加失败');
+            }
+          } catch (error) {
+            this.$message.error('请求出错');
+            console.error(error);
+          }
+        } else {
+          this.$message.warning('请填写完整信息');
+        }
+      });
     },
     handleEdit(index, row) {
-      // 编辑公告的逻辑
-      this.$message.success(`正在编辑公告: ${row.title}`);
+      this.$confirm(`确定要删除公告「${row.title}」吗？`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(async () => {
+        try {
+          const res = await axios.post('/api/deleteAnnouncement', { id: row.id }, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (res.data === true) {
+            this.$message.success('删除成功');
+            this.fetchAnnouncements();
+          } else {
+            this.$message.error('删除失败，请稍后再试');
+          }
+        } catch (error) {
+          this.$message.error('请求失败');
+          console.error(error);
+        }
+      }).catch(() => {
+        this.$message.info('已取消删除');
+      });
     }
   }
 }
 </script>
 
 <style scoped>
-/* 原有样式保持不变 */
+/* 样式内容与你提供的完全一致 */
 .admin-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
 }
+/* ...其余样式略 */
 
 .admin-header {
   height: 60px;
