@@ -29,7 +29,7 @@
               <span>人员管理</span>
             </template>
             <el-menu-item index="1-1">公告管理</el-menu-item>
-            <el-menu-item index="1-2">水电费管理</el-menu-item>
+
             <el-menu-item index="1-3">报修处理</el-menu-item>
             <el-menu-item index="1-4">更改个人信息</el-menu-item>
           </el-submenu>
@@ -69,6 +69,53 @@
             </el-card>
           </div>
 
+          <el-dialog title="报修详情" v-model="repairDetailDialogVisible" width="50%">
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="描述">{{ repairDetail.description }}</el-descriptions-item>
+              <el-descriptions-item label="地点类型">{{ repairDetail.locationType }}</el-descriptions-item>
+              <el-descriptions-item label="具体位置">{{ repairDetail.specificLocation }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">{{ repairDetail.createdAt }}</el-descriptions-item>
+              <el-descriptions-item label="状态">
+                <div v-if="repairDetail.status === '待处理'">
+                  <el-tag type="warning">待处理</el-tag>
+                  <el-button
+                      type="primary"
+                      size="small"
+                      @click="handleRepair"
+                      style="margin-left: 10px;"
+                  >
+                    点击处理完成
+                  </el-button>
+                </div>
+                <div v-else-if="repairDetail.status === '已处理'">
+                  <el-tag type="success">已处理</el-tag>
+                </div>
+                <div v-else-if="repairDetail.status === '已评价'">
+                  <el-tag type="info">已评价</el-tag>
+                </div>
+                <div v-else>
+                  <el-tag>{{ repairDetail.status }}</el-tag>
+                </div>
+              </el-descriptions-item>
+              <el-descriptions-item label="评价">
+
+
+                {{repairDetail.rating !== null ? repairDetail.rating + '⭐':'暂无评价'}}
+
+              </el-descriptions-item>
+              <el-descriptions-item label="处理人ID">{{ repairDetail.handlerId ?? '暂无' }}</el-descriptions-item>
+              <el-descriptions-item label="图片">
+                <img v-if="repairDetail.imageUrl" :src="repairDetail.imageUrl" alt="报修图片" style="max-width: 100%;" />
+                <span v-else>无图片</span>
+              </el-descriptions-item>
+            </el-descriptions>
+
+            <template #footer>
+              <el-button @click="repairDetailDialogVisible = false">关闭</el-button>
+            </template>
+          </el-dialog>
+
+
           <!-- 公告管理内容 -->
           <div v-show="activeMenu === '1-1'">
             <el-card class="box-card">
@@ -79,7 +126,13 @@
                 </div>
               </template>
               <el-table :data="noticeData" style="width: 100%" height="400">
-                <el-table-column prop="title" label="标题" width="180"></el-table-column>
+                <el-table-column prop="title" label="标题(点击查看详细)" width="180">
+                  <template #default="scope">
+                    <el-link type="primary" @click="showDetail(scope.row.content)">
+                      {{ scope.row.title }}
+                    </el-link>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="content" label="内容"></el-table-column>
                 <el-table-column prop="name" label="发布人"></el-table-column>
                 <el-table-column prop="date" label="发布日期" width="180"></el-table-column>
@@ -105,14 +158,38 @@
           </div>
 
           <!-- 报修处理内容 -->
+
+
           <div v-show="activeMenu === '1-3'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
                   <span>报修处理</span>
+
                 </div>
               </template>
-              <div>报修处理内容将在这里显示</div>
+              <el-table :data="repairData" style="width: 100%" height="400">
+                <el-table-column prop="description" label="描述（点击查看详细）">
+                  <template #default="scope">
+                    <el-link type="primary" @click="fetchRepairDetail(scope.row.id)">
+                      {{ scope.row.description }}
+                    </el-link>
+                  </template>
+                </el-table-column>
+
+                <el-table-column prop="status" label="处理状态">
+                  <template #default="scope">
+                    <el-tag
+                        :type="scope.row.status === 'PENDING' ? 'warning' :
+             scope.row.status === 'PROCESSED' ? 'success' : 'info'"
+                    >
+                      {{ mapStatus(scope.row.status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="evaluation" label="评价"></el-table-column>
+                <el-table-column prop="time" label="时间" width="180"></el-table-column>
+              </el-table>
             </el-card>
           </div>
         </div>
@@ -137,6 +214,14 @@
         </span>
       </template>
     </el-dialog>
+    <el-dialog title="详细内容" v-model="detailDialogVisible" width="30%">
+      <span>{{ detailContent }}</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 页脚 -->
     <footer class="admin-footer">
@@ -157,8 +242,22 @@ export default {
     return {
       activeMenu: 'home',
       currentTitle: '欢迎使用管理系统',
+      repairDetailDialogVisible: false,
       noticeData: [],
+      repairDetail: {
+        description: '',
+        locationType: '',
+        specificLocation: '',
+        createdAt: '',
+        status: '',
+        rating: null,
+        handlerId: null,
+        imageUrl: ''
+      },
       addDialogVisible: false,
+      detailDialogVisible: false,
+      detailContent: '',
+      repairData: [],
       addForm: {
         title: '',
         content: '',
@@ -192,21 +291,166 @@ export default {
     addowner() {
       this.$router.push('/addowner');
     },
+    startRating() {
+      this.isRating = true;
+      this.ratingValue = 0;
+    },
+    async handleRepair() {
+      try {
+        // 调用后端接口处理报修
+        const response = await axios.post('/api/handRepair', {
+          id: this.repairDetail.id,
+          handlerId:this.userId
+        });
+
+        if (response.data) {
+          this.$message.success('处理成功');
+          // 更新状态为"已处理"
+          this.repairDetail.status = '已处理';
+
+          // 更新列表中的状态
+          const index = this.repairData.findIndex(item => item.id === this.repairDetail.id);
+          if (index !== -1) {
+            this.repairData[index].status = 'PROCESSED'; // 根据实际后端返回的值调整
+          }
+        } else {
+          this.$message.error('处理失败');
+        }
+      } catch (error) {
+        this.$message.error('处理请求失败');
+        console.error(error);
+      }
+    },
+    async submitAddForm() {
+      this.addDialogVisible = true;
+      this.addForm.uploaderId = this.userId;
+      this.$refs.addForm.validate(async valid => {
+        if (valid) {
+          try {
+            const res = await axios.post('/api/createAnnouncement', this.addForm, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            if (res.data === true) {
+              this.$message.success('公告添加成功');
+              this.addDialogVisible = false;
+              this.fetchAnnouncements();
+              this.resetAddForm();
+            } else {
+              this.$message.error('公告添加失败');
+            }
+          } catch (error) {
+            this.$message.error('请求出错');
+            console.error(error);
+          }
+        } else {
+          this.$message.warning('请填写完整信息');
+        }
+      });
+    },
+    async submitRating() {
+      if (this.ratingValue === 0) {
+        this.$message.warning('请选择评分');
+        return;
+      }
+
+      try {
+        const response = await axios.post('/api/rateRepair', {
+          id: this.repairDetail.id,  // 对应后端的id字段
+          rating: this.ratingValue   // 对应后端的rating字段
+        }, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.data) {
+          this.$message.success('评分成功');
+          this.repairDetail.rating = this.ratingValue;
+          this.repairDetail.status = '已评价';
+          this.isRating = false;
+
+          // 更新列表中的状态
+          const index = this.repairData.findIndex(item => item.id === this.repairDetail.id);
+          if (index !== -1) {
+            this.repairData[index].status = 'rated';
+            this.repairData[index].evaluation = `已评分(${this.ratingValue}星)`;
+          }
+        } else {
+          this.$message.error('评分失败');
+        }
+      } catch (error) {
+        this.$message.error('评分请求失败');
+        console.error(error);
+      }
+    },
+    mapStatus(status) {
+      switch (status) {
+        case 'pending': return '待处理';
+        case 'processed': return '已处理';
+        case 'rated': return '已评价';
+        case 'PROCESSED': return '已处理';
+        default: return status;
+      }
+    },
+
+    async fetchRepairDetail(id) {
+      try {
+        const response = await axios.post('/api/findRepairById', id, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = response.data;
+
+        let imageUrl = '';
+        if (data.image) {
+          const byteCharacters = atob(data.image);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+          imageUrl = URL.createObjectURL(blob);
+        }
+
+        this.repairDetail = {
+          id: data.id,  // 确保这里获取了正确的id
+          description: data.description,
+          locationType: data.locationType === 'INDOOR' ? '室内' : '公共区域',
+          specificLocation: data.specificLocation,
+          createdAt: this.formatTime(data.createdAt),
+          status: this.mapStatus(data.status),
+          rating: data.rating,
+          handlerId: data.handlerId,
+          imageUrl
+        };
+
+        this.isRating = false;
+        this.ratingValue = 0;
+        this.repairDetailDialogVisible = true;
+      } catch (error) {
+        this.$message.error('获取报修详情失败');
+        console.error(error);
+      }
+    }
+
+
+    ,
+
     handleMenuSelect(index) {
       this.activeMenu = index;
-      switch(index) {
+      switch (index) {
         case '1-1':
-          this.currentTitle = '公告管理';
+          this.currentTitle = '公告查看';
           this.fetchAnnouncements();
           requestAnimationFrame(() => {
             window.dispatchEvent(new Event('resize'));
           });
           break;
         case '1-2':
-          this.currentTitle = '水电费管理';
+          this.currentTitle = '水电费缴纳';
           break;
         case '1-3':
           this.currentTitle = '报修处理';
+          this.fetchRepairs();
           break;
         case '1-4':
           this.currentTitle = '更改个人信息';
@@ -239,38 +483,65 @@ export default {
         console.error(error);
       }
     },
+    async fetchRepairs() {
+      try {
+        const userId = this.userId;
+        if (!userId) {
+          this.$message.error("用户ID未找到");
+          return;
+        }
+
+        const response = await axios.post('/api/findRepairListByCreatorId', userId, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        this.repairData = response.data.map(item => ({
+          id: item.id,
+          description: item.description,
+          status: item.status,
+          evaluation: item.rating !== null ? item.rating + '⭐' : '暂无评价',
+          time: this.formatTime(item.createdAt)
+        }));
+
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
+      } catch (error) {
+        this.$message.error('报修信息获取失败，请稍后重试');
+        console.error(error);
+      }
+    }
+    ,
+    showDetail(content) {
+      this.detailContent = content;
+      this.detailDialogVisible = true;
+    },
+    formatTime(rawTime) {
+      if (!rawTime) return '无时间';
+      // 将 "yyyy-MM-dd HH:mm:ss" -> "yyyy-MM-ddTHH:mm:ss"（使其能被 Date 正确识别）
+      const parsedTime = rawTime.replace(' ', 'T');
+      const date = new Date(parsedTime);
+      if (isNaN(date.getTime())) return '无效时间';
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
     addNotice() {
       this.addDialogVisible = true;
     },
     resetAddForm() {
       this.$refs.addForm.resetFields();
     },
-    async submitAddForm() {
-      this.addDialogVisible = true;
-      this.addForm.uploaderId = this.userId;
-      this.$refs.addForm.validate(async valid => {
-        if (valid) {
-          try {
-            const res = await axios.post('/api/createAnnouncement', this.addForm, {
-              headers: { 'Content-Type': 'application/json' }
-            });
-            if (res.data === true) {
-              this.$message.success('公告添加成功');
-              this.addDialogVisible = false;
-              this.fetchAnnouncements();
-              this.resetAddForm();
-            } else {
-              this.$message.error('公告添加失败');
-            }
-          } catch (error) {
-            this.$message.error('请求出错');
-            console.error(error);
-          }
-        } else {
-          this.$message.warning('请填写完整信息');
-        }
-      });
+    resetForm() {
+      this.$refs.repairForm.resetFields();
+      this.imageFileList = [];
     },
+
     handleEdit(index, row) {
       this.$confirm(`确定要删除公告「${row.title}」吗？`, '提示', {
         confirmButtonText: '确定',
@@ -294,7 +565,58 @@ export default {
       }).catch(() => {
         this.$message.info('已取消删除');
       });
+    },
+    handleImageChange(file, fileList) {
+      this.imageFileList = fileList.slice(-1); // 只保留一张
+    },
+    handleImageRemove(file, fileList) {
+      this.imageFileList = fileList;
+    },
+    handlePictureCardPreview(file) {
+      this.previewImageUrl = file.url;
+      this.imagePreviewVisible = true;
+    },
+    submitRepair() {
+      this.$refs.repairForm.validate(async valid => {
+        if (!valid) return;
+
+        const formData = new FormData();
+        formData.append('description', this.addForm.description);
+        formData.append('locationType', this.addForm.locationType);
+        formData.append('specificLocation', this.addForm.specificLocation);
+        const userId = store.state.user?.userDetails?.ownerID;
+        if (!userId) {
+          this.$message.error("未获取到用户ID，无法提交");
+          return;
+        }
+        formData.append('creatorId', userId);
+
+        if (this.imageFileList.length > 0) {
+          formData.append('image', this.imageFileList[0].raw);
+        }
+        console.log('提交的维修请求数据:', this.addForm);
+        console.log('提交的维修请求数据:', userId);
+
+        try {
+          this.submitting = true;
+          await this.$axios.post('/api/createRepair', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          this.$message.success('报修提交成功');
+          this.addDialogVisible = false;
+          // 重置表单及图片等
+        } catch (error) {
+          console.error(error);
+          this.$message.error('提交失败，请填写完整信息');
+        } finally {
+          this.submitting = false;
+        }
+      });
     }
+
+
+
+
   }
 }
 </script>

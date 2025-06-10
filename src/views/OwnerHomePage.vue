@@ -22,15 +22,16 @@
             background-color="#545c64"
             text-color="#fff"
             active-text-color="#ffd04b"
-            @select="handleMenuSelect">
+            @select="handleMenuSelect"
+        >
           <el-submenu index="1">
             <template #title>
               <i class="el-icon-user"></i>
               <span>人员管理</span>
             </template>
             <el-menu-item index="1-1">公告查看</el-menu-item>
-            <el-menu-item index="1-2">水电费管理</el-menu-item>
-            <el-menu-item index="1-3">报修处理</el-menu-item>
+            <el-menu-item index="1-2">水电费缴纳</el-menu-item>
+            <el-menu-item index="1-3">报修</el-menu-item>
             <el-menu-item index="1-4">更改个人信息</el-menu-item>
           </el-submenu>
           <el-submenu index="2">
@@ -75,49 +76,171 @@
               <template #header>
                 <div class="clearfix">
                   <span>公告查看</span>
-
                 </div>
               </template>
               <el-table :data="noticeData" style="width: 100%" height="400">
-                <el-table-column prop="title" label="标题" width="180"></el-table-column>
-                <el-table-column prop="content" label="内容"></el-table-column>
+                <el-table-column prop="title" label="标题(点击查看详细)" width="180">
+                  <template #default="scope">
+                    <el-link type="primary" @click="showDetail(scope.row.content)">
+                      {{ scope.row.title }}
+                    </el-link>
+                  </template>
+                </el-table-column>
                 <el-table-column prop="name" label="发布人"></el-table-column>
                 <el-table-column prop="date" label="发布日期" width="180"></el-table-column>
-
-
-
               </el-table>
             </el-card>
           </div>
 
-          <!-- 水电费管理内容 -->
+          <!-- 水电费缴纳内容 -->
           <div v-show="activeMenu === '1-2'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
-                  <span>水电费管理</span>
+                  <span>水电费缴纳</span>
                 </div>
               </template>
-              <div>水电费管理内容将在这里显示</div>
+              <div>
+                <el-table :data="feeData" style="width: 100%" height="400">
+                <!--<el-table-column prop="title" label="标题(点击查看详细)" width="180">
+                  <template #default="scope">
+                    <el-link type="primary" @click="showDetail(scope.row.content)">
+                      {{ scope.row.title }}
+                    </el-link>
+                  </template>
+                </el-table-column>-->
+                  <el-table-column prop="time" label="时间"></el-table-column>
+                  <el-table-column prop="waterFee" label="水费"></el-table-column>
+                  <el-table-column prop="electricityFee" label="电费"></el-table-column>
+                <el-table-column prop="totalFee" label="总计"></el-table-column>
+                <el-table-column prop="isPaid" label="缴费状态" ></el-table-column>
+                  <el-table-column label="操作" width="120">
+                    <template #default="scope">
+                      <el-button
+                          type="primary"
+                          size="small"
+                          @click="payBill(scope.row.id)"
+                          :disabled="scope.row.isPaid==='已缴费'">
+                        {{ scope.row.isPaid==='已缴费' ? '已缴费' : '缴费' }}
+                      </el-button>
+                    </template>
+                  </el-table-column>
+              </el-table></div>
             </el-card>
           </div>
 
-          <!-- 报修处理内容 -->
           <div v-show="activeMenu === '1-3'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
-                  <span>报修处理</span>
+                  <span>报修</span>
+                  <el-button type="primary" class="float-right" @click="addDialogVisible = true">我要报修</el-button>
                 </div>
               </template>
-              <div>报修处理内容将在这里显示</div>
+              <el-table :data="repairData" style="width: 100%" height="400">
+                <el-table-column prop="description" label="描述（点击查看详细）">
+                  <template #default="scope">
+                    <el-link type="primary" @click="fetchRepairDetail(scope.row.id)">
+                      {{ scope.row.description }}
+                    </el-link>
+                  </template>
+                </el-table-column>
+
+                <el-table-column prop="status" label="处理状态">
+                  <template #default="scope">
+                    <el-tag
+                        :type="scope.row.status === 'PENDING' ? 'warning' :
+             scope.row.status === 'PROCESSED' ? 'success' : 'info'"
+                    >
+                      {{ mapStatus(scope.row.status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="evaluation" label="评价"></el-table-column>
+                <el-table-column prop="time" label="时间" width="180"></el-table-column>
+              </el-table>
             </el-card>
           </div>
         </div>
       </main>
-    </div>
+    </div><el-dialog title="提交报修" v-model="addDialogVisible" width="600px">
+    <el-form :model="addForm" :rules="rules" ref="repairForm" label-width="100px">
+      <el-form-item label="描述" prop="description">
+        <el-input type="textarea" v-model="addForm.description" placeholder="请填写问题描述" />
+      </el-form-item>
+
+      <el-form-item label="地点类型" prop="locationType">
+        <el-select v-model="addForm.locationType" placeholder="请选择地点类型">
+          <el-option label="室内" value="INDOOR" />
+          <el-option label="公共区域" value="PUBLIC_AREA" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="具体位置" prop="specificLocation">
+        <el-input v-model="addForm.specificLocation" placeholder="请输入具体地点" />
+      </el-form-item>
+
+      <el-form-item label="上传图片" prop="imageFile">
+        <el-upload
+            :auto-upload="false"
+            :limit="1"
+            :file-list="imageFileList"
+            :on-change="handleImageChange"
+            :on-remove="handleImageRemove"
+            list-type="picture-card"
+        >
+          <i class="el-icon-plus"></i>
+        </el-upload>
+        <template #tip>
+          <div class="el-upload__tip">仅支持上传一张图片</div>
+        </template>
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <el-button @click="addDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="submitting" @click="submitRepair">提交</el-button>
+    </template>
+  </el-dialog>
 
 
+    <el-dialog v-model="imagePreviewVisible" title="图片预览">
+      <img :src="previewImageUrl" style="width: 100%" alt="预览图片" />
+    </el-dialog>
+
+    <el-dialog title="报修详情" v-model="repairDetailDialogVisible" width="50%">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="描述">{{ repairDetail.description }}</el-descriptions-item>
+        <el-descriptions-item label="地点类型">{{ repairDetail.locationType }}</el-descriptions-item>
+        <el-descriptions-item label="具体位置">{{ repairDetail.specificLocation }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ repairDetail.createdAt }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ repairDetail.status }}</el-descriptions-item>
+        <el-descriptions-item label="评分">
+          <div v-if="repairDetail.status === '已处理' && !this.isRating">
+            <el-button type="primary" @click="startRating">评分</el-button>
+          </div>
+          <div v-else-if="repairDetail.status === '已处理'&& this.isRating">
+            <el-rate v-model="ratingValue" :colors="['#99A9BF', '#F7BA2A', '#FF9900']"></el-rate>
+            <el-button type="primary" @click="submitRating" style="margin-top: 10px;">提交评分</el-button>
+          </div>
+          <div v-else-if="repairDetail.rating">
+            <el-rate v-model="repairDetail.rating" disabled show-score :colors="['#99A9BF', '#F7BA2A', '#FF9900']"></el-rate>
+          </div>
+          <div v-else>
+            未评分
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item label="处理人ID">{{ repairDetail.handlerId ?? '暂无' }}</el-descriptions-item>
+        <el-descriptions-item label="图片">
+          <img v-if="repairDetail.imageUrl" :src="repairDetail.imageUrl" alt="报修图片" style="max-width: 100%;" />
+          <span v-else>无图片</span>
+        </el-descriptions-item>
+      </el-descriptions>
+
+      <template #footer>
+        <el-button @click="repairDetailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 页脚 -->
     <footer class="admin-footer">
@@ -125,6 +248,16 @@
         <p>© 2025 管理系统 版权所有</p>
       </div>
     </footer>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog title="详细内容" v-model="detailDialogVisible" width="30%">
+      <span>{{ detailContent }}</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -139,62 +272,73 @@ export default {
       activeMenu: 'home',
       currentTitle: '欢迎使用管理系统',
       noticeData: [],
+      feeData: [],
+      ratingValue: 0, // 用于存储评分值
+      isRating: false, // 是否正在评分
+      repairData: [],
       addDialogVisible: false,
-      addForm: {
-        title: '',
-        content: '',
-        uploaderId:null
-
+      detailDialogVisible: false,
+      detailContent: '',
+      submitting: false,
+      imagePreviewVisible: false,
+      previewImageUrl: '',
+      repairDetailDialogVisible: false,
+      repairDetail: {
+        description: '',
+        locationType: '',
+        specificLocation: '',
+        createdAt: '',
+        status: '',
+        rating: null,
+        handlerId: null,
+        imageUrl: ''
       },
-      addRules: {
-        title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-        content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
+      addForm: {
+        locationType: '',
+        description: '',
+        specificLocation: '',
+        creatorId: 1,
+        id:null
+      },
+      imageFileList: [],
+      rules: {
+        description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
+        locationType: [{ required: true, message: '请选择地点类型', trigger: 'change' }],
+        specificLocation: [{ required: true, message: '请输入具体位置', trigger: 'blur' }]
       }
-    }
+    };
   },
   computed: {
     userName() {
       return store.state.user?.userDetails?.user?.username || '未登录用户';
     },
     userId() {
-      return store.state.user?.userDetails?.propertyID;
+      return store.state.user?.userDetails?.ownerID;
+    },
+    buildingNumber(){
+    return store.state.user?.userDetails?.buildingNumber;
+    },
+    doorNumber(){
+      return store.state.user?.userDetails?.doorNumber;
     }
   },
   mounted() {
     this.fetchAnnouncements();
+    this.fetchRepairs();
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    // 在 created 或 mounted 中赋值
     this.addForm.uploaderId = this.userId;
+    this.addForm.creatorId=this.userId
   },
   methods: {
     addowner() {
       this.$router.push('/addowner');
     },
-    handleMenuSelect(index) {
-      this.activeMenu = index;
-      switch(index) {
-        case '1-1':
-          this.currentTitle = '公告查看';
-          this.fetchAnnouncements();
-          requestAnimationFrame(() => {
-            window.dispatchEvent(new Event('resize'));
-          });
-          break;
-        case '1-2':
-          this.currentTitle = '水电费管理';
-          break;
-        case '1-3':
-          this.currentTitle = '报修处理';
-          break;
-        case '1-4':
-          this.currentTitle = '更改个人信息';
-          break;
-        default:
-          this.currentTitle = '欢迎使用管理系统';
-      }
+    startRating() {
+      this.isRating = true;
+      this.ratingValue = 0;
     },
     async fetchAnnouncements() {
       try {
@@ -220,11 +364,240 @@ export default {
         console.error(error);
       }
     },
+    async payBill(billId) {
+      try {
+        await this.$confirm('确定要支付该账单吗?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        console.log(billId);
+        // 请求支付接口
+        await axios.post('/api/payBill', billId, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        this.$message({
+          type: 'success',
+          message: '支付成功！'
+        });
+
+        // 可选：刷新账单列表或状态
+        this.handleMenuSelect('1-2');
+      } catch (error) {
+        if (error !== 'cancel') {
+          // 如果不是点击了“取消”按钮
+          this.$message.error('支付失败，请稍后再试');
+          console.error('支付错误:', error);
+        }
+      }
+    }
+,
+    async submitRating() {
+      if (this.ratingValue === 0) {
+        this.$message.warning('请选择评分');
+        return;
+      }
+
+      try {
+        const response = await axios.post('/api/rateRepair', {
+          id: this.repairDetail.id,  // 对应后端的id字段
+          rating: this.ratingValue   // 对应后端的rating字段
+        }, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.data) {
+          this.$message.success('评分成功');
+          this.repairDetail.rating = this.ratingValue;
+          this.repairDetail.status = '已评价';
+          this.isRating = false;
+
+          // 更新列表中的状态
+          const index = this.repairData.findIndex(item => item.id === this.repairDetail.id);
+          if (index !== -1) {
+            this.repairData[index].status = 'rated';
+            this.repairData[index].evaluation = `已评分(${this.ratingValue}星)`;
+          }
+        } else {
+          this.$message.error('评分失败');
+        }
+      } catch (error) {
+        this.$message.error('评分请求失败');
+        console.error(error);
+      }
+    },
+    mapStatus(status) {
+      switch (status) {
+        case 'pending': return '待处理';
+        case 'processed': return '已处理';
+        case 'rated': return '已评价';
+        default: return status;
+      }
+    },
+    async fetchRepairDetail(id) {
+      try {
+        const response = await axios.post('/api/findRepairById', id, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = response.data;
+
+        let imageUrl = '';
+        if (data.image) {
+          const byteCharacters = atob(data.image);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/jpeg' });
+          imageUrl = URL.createObjectURL(blob);
+        }
+
+        this.repairDetail = {
+          id: data.id,  // 确保这里获取了正确的id
+          description: data.description,
+          locationType: data.locationType === 'INDOOR' ? '室内' : '公共区域',
+          specificLocation: data.specificLocation,
+          createdAt: this.formatTime(data.createdAt),
+          status: this.mapStatus(data.status),
+          rating: data.rating,
+          handlerId: data.handlerId,
+          imageUrl
+        };
+
+        this.isRating = false;
+        this.ratingValue = 0;
+        this.repairDetailDialogVisible = true;
+      } catch (error) {
+        this.$message.error('获取报修详情失败');
+        console.error(error);
+      }
+    },
+    handleMenuSelect(index) {
+      this.activeMenu = index;
+      switch (index) {
+        case '1-1':
+          this.currentTitle = '公告查看';
+          this.fetchAnnouncements();
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+          });
+          break;
+        case '1-2':
+          this.currentTitle = '水电费缴纳';
+          this.fetchFee();
+          break;
+        case '1-3':
+          this.currentTitle = '报修';
+          this.fetchRepairs();
+          break;
+        case '1-4':
+          this.currentTitle = '更改个人信息';
+          break;
+        default:
+          this.currentTitle = '欢迎使用管理系统';
+      }
+    },
+
+    async fetchRepairs() {
+      try {
+        const userId = this.userId;
+        if (!userId) {
+          this.$message.error("用户ID未找到");
+          return;
+        }
+
+        const response = await axios.post('/api/findRepairListByCreatorId', userId, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        this.repairData = response.data.map(item => ({
+          id: item.id,
+          description: item.description,
+          status: item.status,
+          evaluation: item.rating !== null ? item.rating + '⭐' : '暂无评价',
+          time: this.formatTime(item.createdAt)
+        }));
+
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
+      } catch (error) {
+        this.$message.error('报修信息获取失败，请稍后重试');
+        console.error(error);
+      }
+    },
+    async fetchFee() {
+      try {
+
+        const lounum=this.buildingNumber;
+        const doornum=this.doorNumber;
+        if (!lounum||!doornum) {
+          this.$message.error("楼号门牌号ID未找到");
+          return;
+        }
+
+        const response = await axios.post('/api/queryBill', {
+          buildingNumber:lounum,
+          doorNumber:doornum
+        }, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!response.data || response.data.length === 0) {
+          this.$message.warning('未查询到'+lounum+'-'+doornum+'的水电费记录');
+          this.feeData = [];
+          return;
+        }
+
+        this.feeData = response.data.map(item => ({
+          waterFee: item.waterFee,
+          electricityFee: item.electricityFee,
+          totalFee: item.totalFee,
+          isPaid: item.isPaid ? '已缴费' : '未缴费',
+          time: item.billMonth ? this.formatTime(item.billMonth) : '未缴费',
+          id:item.billId
+        }));
+
+
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('resize'));
+        });
+      } catch (error) {
+        this.$message.error('水电费信息获取失败，请稍后重试');
+        console.error(error);
+      }
+    },
+    showDetail(content) {
+      this.detailContent = content;
+      this.detailDialogVisible = true;
+    },
+    formatTime(rawTime) {
+      if (!rawTime) return '无时间';
+      // 将 "yyyy-MM-dd HH:mm:ss" -> "yyyy-MM-ddTHH:mm:ss"（使其能被 Date 正确识别）
+      const parsedTime = rawTime.replace(' ', 'T');
+      const date = new Date(parsedTime);
+      if (isNaN(date.getTime())) return '无效时间';
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
     addNotice() {
       this.addDialogVisible = true;
     },
     resetAddForm() {
       this.$refs.addForm.resetFields();
+    },
+    resetForm() {
+      this.$refs.repairForm.resetFields();
+      this.imageFileList = [];
     },
     handleEdit(index, row) {
       this.$confirm(`确定要删除公告「${row.title}」吗？`, '提示', {
@@ -249,9 +622,56 @@ export default {
       }).catch(() => {
         this.$message.info('已取消删除');
       });
+    },
+    handleImageChange(file, fileList) {
+      this.imageFileList = fileList.slice(-1); // 只保留一张
+    },
+    handleImageRemove(file, fileList) {
+      this.imageFileList = fileList;
+    },
+    handlePictureCardPreview(file) {
+      this.previewImageUrl = file.url;
+      this.imagePreviewVisible = true;
+    },
+    submitRepair() {
+      this.$refs.repairForm.validate(async valid => {
+        if (!valid) return;
+
+        const formData = new FormData();
+        formData.append('description', this.addForm.description);
+        formData.append('locationType', this.addForm.locationType);
+        formData.append('specificLocation', this.addForm.specificLocation);
+        const userId = store.state.user?.userDetails?.ownerID;
+        if (!userId) {
+          this.$message.error("未获取到用户ID，无法提交");
+          return;
+        }
+        formData.append('creatorId', userId);
+
+        if (this.imageFileList.length > 0) {
+          formData.append('image', this.imageFileList[0].raw);
+        }
+        console.log('提交的维修请求数据:', this.addForm);
+        console.log('提交的维修请求数据:', userId);
+
+        try {
+          this.submitting = true;
+          await this.$axios.post('/api/createRepair', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          this.$message.success('报修提交成功');
+          this.addDialogVisible = false;
+          // 重置表单及图片等
+        } catch (error) {
+          console.error(error);
+          this.$message.error('提交失败，请填写完整信息');
+        } finally {
+          this.submitting = false;
+        }
+      });
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -262,7 +682,6 @@ export default {
   min-height: 100vh;
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
 }
-/* ...其余样式略 */
 
 .admin-header {
   height: 60px;
@@ -357,5 +776,11 @@ export default {
   .quick-actions {
     flex-direction: column;
   }
+}
+.float-right {
+  float: right;
+}
+.dialog-footer {
+  text-align: right;
 }
 </style>

@@ -28,7 +28,7 @@
               <span>人员管理</span>
             </template>
             <el-menu-item index="1-1">物业人员管理</el-menu-item>
-            <el-menu-item index="1-2">更改个人信息</el-menu-item>
+            <el-menu-item index="1-2">个人信息</el-menu-item>
           </el-submenu>
           <el-submenu index="2">
             <template #title>
