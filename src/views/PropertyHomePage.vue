@@ -17,7 +17,7 @@
       <!-- 侧边栏导航 -->
       <aside class="admin-sidebar">
         <el-menu
-            default-active="1-1"
+            default-active="1-0"
             class="el-menu-vertical"
             background-color="#545c64"
             text-color="#fff"
@@ -28,10 +28,11 @@
               <i class="el-icon-user"></i>
               <span>人员管理</span>
             </template>
+            <el-menu-item index="1-0">首页</el-menu-item>
             <el-menu-item index="1-1">公告管理</el-menu-item>
-
+            <el-menu-item index="1-2">数据汇总</el-menu-item>
             <el-menu-item index="1-3">报修处理</el-menu-item>
-            <el-menu-item index="1-4">更改个人信息</el-menu-item>
+            <el-menu-item index="1-4">个人信息</el-menu-item>
           </el-submenu>
           <el-submenu index="2">
             <template #title>
@@ -65,9 +66,16 @@
                 <el-button type="primary" icon="el-icon-user" @click="addowner">
                   添加住户
                 </el-button>
+                <el-button type="primary" icon="el-icon-user" @click="handleAddBill">
+                  添加水电费账单
+                </el-button>
+                <AddBillDialog ref="addBillRef" />
               </div>
             </el-card>
           </div>
+
+
+
 
           <el-dialog title="报修详情" v-model="repairDetailDialogVisible" width="50%">
             <el-descriptions :column="1" border>
@@ -115,6 +123,10 @@
             </template>
           </el-dialog>
 
+          <!-- 数据汇总内容 -->
+          <div v-show="activeMenu === '1-2'">
+            <SummaryDashboard />
+          </div>
 
           <!-- 公告管理内容 -->
           <div v-show="activeMenu === '1-1'">
@@ -146,20 +158,74 @@
           </div>
 
           <!-- 水电费管理内容 -->
-          <div v-show="activeMenu === '1-2'">
-            <el-card class="box-card">
-              <template #header>
-                <div class="clearfix">
-                  <span>水电费管理</span>
-                </div>
-              </template>
-              <div>水电费管理内容将在这里显示</div>
-            </el-card>
-          </div>
+          <el-dialog title="详细内容" v-model="detailDialogVisible" width="30%">
+            <span>{{ detailContent }}</span>
+            <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+            </template>
+          </el-dialog>
+
+          <el-dialog
+              title="修改个人信息"
+              v-model="editDialogVisible"
+              width="400px"
+              @close="resetEditForm"
+          >
+            <el-form :model="editForm" ref="editForm" label-width="100px">
+              <el-form-item label="用户名">
+                <el-input v-model="editForm.username" autocomplete="off"></el-input>
+              </el-form-item>
+              <el-form-item label="新密码">
+                <el-input
+                    type="password"
+                    v-model="editForm.password"
+                    autocomplete="new-password"
+                    placeholder="不修改请留空"
+                ></el-input>
+              </el-form-item>
+              <el-form-item label="确认密码">
+                <el-input
+                    type="password"
+                    v-model="editForm.confirmPassword"
+                    autocomplete="new-password"
+                    placeholder="再次输入密码"
+                ></el-input>
+              </el-form-item>
+              <el-form-item label="邮箱">
+                <el-input v-model="editForm.email" autocomplete="off"></el-input>
+              </el-form-item>
+              <el-form-item label="手机号">
+                <el-input v-model="editForm.phoneNumber" autocomplete="off"></el-input>
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="editDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="submitEditForm">保存</el-button>
+            </template>
+          </el-dialog>
 
           <!-- 报修处理内容 -->
 
-
+          <div v-show="activeMenu === '1-4'">
+            <el-card class="box-card">
+              <template #header>
+                <div class="clearfix">
+                  <span>个人信息</span>
+                  <el-button type="primary" size="small" style="float: right;" @click="openEditDialog">修改个人信息</el-button>
+                </div>
+              </template>
+              <el-descriptions title="账户信息" :column="1" border>
+                <el-descriptions-item label="用户ID">{{ user.userID }}</el-descriptions-item>
+                <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
+                <el-descriptions-item label="邮箱">{{ user.email || "暂无" }}</el-descriptions-item>
+                <el-descriptions-item label="角色">{{ user.role }}</el-descriptions-item>
+                <el-descriptions-item label="手机号">{{ user.phoneNumber || "暂无" }}</el-descriptions-item>
+                <el-descriptions-item label="注册时间">{{ user.createdAt ? new Date(user.createdAt).toLocaleString() : "暂无" }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
+          </div>
           <div v-show="activeMenu === '1-3'">
             <el-card class="box-card">
               <template #header>
@@ -214,14 +280,6 @@
         </span>
       </template>
     </el-dialog>
-    <el-dialog title="详细内容" v-model="detailDialogVisible" width="30%">
-      <span>{{ detailContent }}</span>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="detailDialogVisible = false">关闭</el-button>
-        </span>
-      </template>
-    </el-dialog>
 
     <!-- 页脚 -->
     <footer class="admin-footer">
@@ -234,16 +292,45 @@
 
 <script>
 import store from "../store";
+import { ref } from 'vue'
 import axios from "axios";
+import AddBillDialog from './AddBillDialog.vue'
+import SummaryDashboard from './SummaryDashboard.vue'
 
 export default {
+  components: {
+    AddBillDialog,
+    SummaryDashboard
+  },
+  setup() {
+    const addBillRef = ref(null)
+
+    const handleAddBill = () => {
+      if (addBillRef.value) {
+        addBillRef.value.openDialog()
+      }
+    }
+
+    return {
+      addBillRef,
+      handleAddBill
+    }
+  },
   name: 'AdminDashboard',
   data() {
     return {
       activeMenu: 'home',
-      currentTitle: '欢迎使用管理系统',
+      currentTitle: '首页',
       repairDetailDialogVisible: false,
       noticeData: [],
+      editDialogVisible: false,
+      editForm: {
+        username: "",
+        password: "",
+        confirmPassword: "",
+        email: "",
+        phoneNumber: "",
+      },
       repairDetail: {
         description: '',
         locationType: '',
@@ -276,7 +363,10 @@ export default {
     },
     userId() {
       return store.state.user?.userDetails?.propertyID;
-    }
+    },
+    user() {
+      return store.state.user?.userDetails?.user || {};
+    },
   },
   mounted() {
     this.fetchAnnouncements();
@@ -290,6 +380,50 @@ export default {
   methods: {
     addowner() {
       this.$router.push('/addowner');
+    },
+    submitEditForm() {
+      if (this.editForm.password !== this.editForm.confirmPassword) {
+        this.$message.error("两次输入的密码不一致！");
+        return;
+      }
+
+      const updatedData = {
+        userID: this.user.userID,
+        username: this.editForm.username,
+        email: this.editForm.email,
+        phone: this.editForm.phoneNumber, // ✅ 注意：字段名为 phone，不是 phoneNumber
+      };
+
+      if (this.editForm.password) {
+        updatedData.password = this.editForm.password;
+      }
+
+      // 发送 POST 请求
+      this.$axios.post("/api/UserUpdate", updatedData)
+          .then(response => {
+            if (response.data === true) {
+              this.$message.success("个人信息修改成功，请重新登录！");
+              this.editDialogVisible = false;
+              this.$router.push("/")
+
+              // 可选：更新 Vuex 中的用户信息
+              this.$store.commit("updateUserDetails", updatedData);
+            } else {
+              this.$message.error("个人信息修改失败，请稍后再试！");
+            }
+          })
+          .catch(error => {
+            console.error("请求失败：", error);
+            this.$message.error("请求出错！");
+          });
+    },
+    openEditDialog() {
+      this.editForm.username = this.user.username || "";
+      this.editForm.password = "";
+      this.editForm.confirmPassword = "";
+      this.editForm.email = this.user.email || "";
+      this.editForm.phoneNumber = this.user.phoneNumber || "";
+      this.editDialogVisible = true;
     },
     startRating() {
       this.isRating = true;
@@ -445,18 +579,24 @@ export default {
             window.dispatchEvent(new Event('resize'));
           });
           break;
-        case '1-2':
-          this.currentTitle = '水电费缴纳';
+        case '1-0':
+          this.activeMenu = 'home';
+          this.currentTitle = '首页';
+
           break;
         case '1-3':
           this.currentTitle = '报修处理';
           this.fetchRepairs();
           break;
+        case '1-2':
+          this.currentTitle = '数据汇总';
+
+          break;
         case '1-4':
-          this.currentTitle = '更改个人信息';
+          this.currentTitle = '个人信息';
           break;
         default:
-          this.currentTitle = '欢迎使用管理系统';
+          this.currentTitle = '首页';
       }
     },
     async fetchAnnouncements() {

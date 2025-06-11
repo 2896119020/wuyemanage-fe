@@ -17,11 +17,13 @@
       <!-- 侧边栏导航 -->
       <aside class="admin-sidebar">
         <el-menu
-            default-active="1"
+            :default-active="activeMenuItem"
             class="el-menu-vertical"
             background-color="#545c64"
             text-color="#fff"
-            active-text-color="#ffd04b">
+            active-text-color="#ffd04b"
+            @select="handleMenuSelect"
+        >
           <el-submenu index="1">
             <template #title>
               <i class="el-icon-user"></i>
@@ -49,7 +51,8 @@
         </div>
 
         <div class="content-main">
-          <el-card class="box-card">
+          <!-- 快捷操作 -->
+          <el-card class="box-card" v-if="activeMenuItem === '' || activeMenuItem === '1-1'">
             <template #header>
               <div class="clearfix">
                 <span>快捷操作</span>
@@ -61,9 +64,67 @@
               </el-button>
             </div>
           </el-card>
+
+          <!-- 个人信息显示 -->
+          <el-card class="box-card" v-if="activeMenuItem === '1-2'">
+            <template #header>
+              <div class="clearfix">
+                <span>个人信息</span>
+                <el-button type="primary" size="small" style="float: right;" @click="openEditDialog">修改个人信息</el-button>
+              </div>
+            </template>
+            <el-descriptions title="账户信息" :column="1" border>
+              <el-descriptions-item label="用户ID">{{ user.userID }}</el-descriptions-item>
+              <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
+              <el-descriptions-item label="邮箱">{{ user.email || "暂无" }}</el-descriptions-item>
+              <el-descriptions-item label="角色">{{ user.role }}</el-descriptions-item>
+              <el-descriptions-item label="手机号">{{ user.phoneNumber || "暂无" }}</el-descriptions-item>
+              <el-descriptions-item label="注册时间">{{ user.createdAt ? new Date(user.createdAt).toLocaleString() : "暂无" }}</el-descriptions-item>
+            </el-descriptions>
+          </el-card>
         </div>
       </main>
     </div>
+
+    <!-- ✅ 修改个人信息弹窗 -->
+    <el-dialog
+        title="修改个人信息"
+        v-model="editDialogVisible"
+        width="400px"
+        @close="resetEditForm"
+    >
+      <el-form :model="editForm" ref="editForm" label-width="100px">
+        <el-form-item label="用户名">
+          <el-input v-model="editForm.username" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+              type="password"
+              v-model="editForm.password"
+              autocomplete="new-password"
+              placeholder="不修改请留空"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="确认密码">
+          <el-input
+              type="password"
+              v-model="editForm.confirmPassword"
+              autocomplete="new-password"
+              placeholder="再次输入密码"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="editForm.email" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="editForm.phoneNumber" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitEditForm">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 页脚 -->
     <footer class="admin-footer">
@@ -77,19 +138,108 @@
 <script>
 import store from "../store";
 
+
 export default {
-  name: 'AdminDashboard',
+  name: "AdminDashboard",
+  data() {
+    return {
+      activeMenuItem: "",
+      editDialogVisible: false,
+      editForm: {
+        username: "",
+        password: "",
+        confirmPassword: "",
+        email: "",
+        phoneNumber: "",
+      },
+    };
+  },
   computed: {
+    user() {
+      return store.state.user?.userDetails || {};
+    },
     userName() {
-      return store.state.user?.userDetails?.username || '未登录用户'
-    }
+      return this.user.username || "未登录用户";
+    },
   },
   methods: {
     addStaff() {
-      this.$router.push('/addstaff')
+      this.$router.push("/addstaff");
+    },
+    handleMenuSelect(index) {
+
+      this.activeMenuItem = index;
+      switch (index) {
+        case '1-1':
+          this.currentTitle = '无业人员管理';
+
+          break;
+        case '1-2':
+          this.currentTitle = '个人信息';
+
+          break;
+        case '1-3':
+          this.currentTitle = '报修';
+
+          break;
+        case '1-4':
+          this.currentTitle = '更改个人信息';
+          break;
+        default:
+          this.currentTitle = '欢迎使用管理系统';
+      }
+    },
+    openEditDialog() {
+      this.editForm.username = this.user.username || "";
+      this.editForm.password = "";
+      this.editForm.confirmPassword = "";
+      this.editForm.email = this.user.email || "";
+      this.editForm.phoneNumber = this.user.phoneNumber || "";
+      this.editDialogVisible = true;
+    },
+    resetEditForm() {
+      this.editForm.password = "";
+      this.editForm.confirmPassword = "";
+    },
+    submitEditForm() {
+      if (this.editForm.password !== this.editForm.confirmPassword) {
+        this.$message.error("两次输入的密码不一致！");
+        return;
+      }
+
+      const updatedData = {
+        userID: this.user.userID,
+        username: this.editForm.username,
+        email: this.editForm.email,
+        phone: this.editForm.phoneNumber, // ✅ 注意：字段名为 phone，不是 phoneNumber
+      };
+
+      if (this.editForm.password) {
+        updatedData.password = this.editForm.password;
+      }
+
+      // 发送 POST 请求
+      this.$axios.post("/api/UserUpdate", updatedData)
+          .then(response => {
+            if (response.data === true) {
+              this.$message.success("个人信息修改成功，请重新登录！");
+              this.editDialogVisible = false;
+              this.$router.push("/")
+
+              // 可选：更新 Vuex 中的用户信息
+               this.$store.commit("updateUserDetails", updatedData);
+            } else {
+              this.$message.error("个人信息修改失败，请稍后再试！");
+            }
+          })
+          .catch(error => {
+            console.error("请求失败：", error);
+            this.$message.error("请求出错！");
+          });
     }
-  }
-}
+
+  },
+};
 </script>
 
 <style scoped>

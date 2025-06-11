@@ -24,6 +24,15 @@ export default createStore({
         localStorage.removeItem('user')
       }
     },
+    UPDATE_USER_DETAILS(state, newDetails) {
+      if (state.user && state.user.userDetails) {
+        state.user.userDetails = {
+          ...state.user.userDetails,
+          ...newDetails
+        }
+        localStorage.setItem('user', JSON.stringify(state.user))
+      }
+    },
     SET_LOGIN_ERROR(state, payload) {
       state.loginError = payload
     },

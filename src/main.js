@@ -16,11 +16,13 @@ import 'element-plus/dist/index.css'
 import router from '../src/router'
 import store from './store'
 import axios from 'axios';
+import { VueEcharts } from 'vue-echarts'
 
 // ⚙️ 创建并挂载 Vue 应用
 const app = createApp(App)
 app.config.globalProperties.$axios = axios;
 app.use(ElementPlus)
 app.use(router)
+app.component('v-chart', VueEcharts)
 app.use(store)
 app.mount('#app')

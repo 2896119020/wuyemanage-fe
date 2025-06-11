@@ -17,7 +17,7 @@
       <!-- 侧边栏导航 -->
       <aside class="admin-sidebar">
         <el-menu
-            default-active="1-1"
+            default-active="1-0"
             class="el-menu-vertical"
             background-color="#545c64"
             text-color="#fff"
@@ -29,16 +29,11 @@
               <i class="el-icon-user"></i>
               <span>人员管理</span>
             </template>
+            <el-menu-item index="1-0">首页</el-menu-item>
             <el-menu-item index="1-1">公告查看</el-menu-item>
             <el-menu-item index="1-2">水电费缴纳</el-menu-item>
             <el-menu-item index="1-3">报修</el-menu-item>
-            <el-menu-item index="1-4">更改个人信息</el-menu-item>
-          </el-submenu>
-          <el-submenu index="2">
-            <template #title>
-              <i class="el-icon-office-building"></i>
-              <span>物业管理</span>
-            </template>
+            <el-menu-item index="1-4">个人信息</el-menu-item>
           </el-submenu>
         </el-menu>
       </aside>
@@ -55,21 +50,30 @@
 
         <div class="content-main">
           <!-- 首页内容 -->
-          <div v-show="activeMenu === 'home'">
+          <div v-show="activeMenu === '1-0'">
+
+          </div>
+
+          <div v-show="activeMenu === '1-4'">
             <el-card class="box-card">
               <template #header>
                 <div class="clearfix">
-                  <span>快捷操作</span>
+                  <span>个人信息</span>
+                  <el-button type="primary" size="small" style="float: right;" @click="openEditDialog">修改个人信息</el-button>
                 </div>
               </template>
-              <div class="quick-actions">
-                <el-button type="primary" icon="el-icon-user" @click="addowner">
-                  添加住户
-                </el-button>
-              </div>
+             <el-descriptions title="账户信息" :column="1" border>
+                <el-descriptions-item label="用户ID">{{ user.userID }}</el-descriptions-item>
+                <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
+               <el-descriptions-item label="楼号">{{ detail.buildingNumber }}</el-descriptions-item>
+               <el-descriptions-item label="门牌号">{{ detail.doorNumber }}</el-descriptions-item>
+                <el-descriptions-item label="邮箱">{{ user.email || "暂无" }}</el-descriptions-item>
+                <el-descriptions-item label="角色">{{ user.role }}</el-descriptions-item>
+                <el-descriptions-item label="手机号">{{ user.phoneNumber || "暂无" }}</el-descriptions-item>
+                <el-descriptions-item label="注册时间">{{ user.createdAt ? new Date(user.createdAt).toLocaleString() : "暂无" }}</el-descriptions-item>
+              </el-descriptions>
             </el-card>
           </div>
-
           <!-- 公告管理内容 -->
           <div v-show="activeMenu === '1-1'">
             <el-card class="box-card">
@@ -258,6 +262,46 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+        title="修改个人信息"
+        v-model="editDialogVisible"
+        width="400px"
+        @close="resetEditForm"
+    >
+      <el-form :model="editForm" ref="editForm" label-width="100px">
+        <el-form-item label="用户名">
+          <el-input v-model="editForm.username" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+              type="password"
+              v-model="editForm.password"
+              autocomplete="new-password"
+              placeholder="不修改请留空"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="确认密码">
+          <el-input
+              type="password"
+              v-model="editForm.confirmPassword"
+              autocomplete="new-password"
+              placeholder="再次输入密码"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="editForm.email" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="editForm.phoneNumber" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitEditForm">保存</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -272,6 +316,7 @@ export default {
       activeMenu: 'home',
       currentTitle: '欢迎使用管理系统',
       noticeData: [],
+      editDialogVisible: false,
       feeData: [],
       ratingValue: 0, // 用于存储评分值
       isRating: false, // 是否正在评分
@@ -283,6 +328,13 @@ export default {
       imagePreviewVisible: false,
       previewImageUrl: '',
       repairDetailDialogVisible: false,
+      editForm: {
+        username: "",
+        password: "",
+        confirmPassword: "",
+        email: "",
+        phoneNumber: "",
+      },
       repairDetail: {
         description: '',
         locationType: '',
@@ -320,7 +372,13 @@ export default {
     },
     doorNumber(){
       return store.state.user?.userDetails?.doorNumber;
-    }
+    },
+    user() {
+      return store.state.user?.userDetails?.user || {};
+    },
+    detail() {
+      return store.state.user?.userDetails || {};
+    },
   },
   mounted() {
     this.fetchAnnouncements();
@@ -335,6 +393,50 @@ export default {
   methods: {
     addowner() {
       this.$router.push('/addowner');
+    },
+    openEditDialog() {
+      this.editForm.username = this.user.username || "";
+      this.editForm.password = "";
+      this.editForm.confirmPassword = "";
+      this.editForm.email = this.user.email || "";
+      this.editForm.phoneNumber = this.user.phoneNumber || "";
+      this.editDialogVisible = true;
+    },
+    submitEditForm() {
+      if (this.editForm.password !== this.editForm.confirmPassword) {
+        this.$message.error("两次输入的密码不一致！");
+        return;
+      }
+
+      const updatedData = {
+        userID: this.user.userID,
+        username: this.editForm.username,
+        email: this.editForm.email,
+        phone: this.editForm.phoneNumber, // ✅ 注意：字段名为 phone，不是 phoneNumber
+      };
+
+      if (this.editForm.password) {
+        updatedData.password = this.editForm.password;
+      }
+
+      // 发送 POST 请求
+      this.$axios.post("/api/UserUpdate", updatedData)
+          .then(response => {
+            if (response.data === true) {
+              this.$message.success("个人信息修改成功，请重新登录！");
+              this.editDialogVisible = false;
+              this.$router.push("/")
+
+              // 可选：更新 Vuex 中的用户信息
+              this.$store.commit("updateUserDetails", updatedData);
+            } else {
+              this.$message.error("个人信息修改失败，请稍后再试！");
+            }
+          })
+          .catch(error => {
+            console.error("请求失败：", error);
+            this.$message.error("请求出错！");
+          });
     },
     startRating() {
       this.isRating = true;

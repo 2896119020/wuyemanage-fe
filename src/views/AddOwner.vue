@@ -11,18 +11,31 @@ const buildingOptions = ref([
   { value: '1', label: '1号楼' },
   { value: '2', label: '2号楼' },
   { value: '3', label: '3号楼' },
+  { value: '4', label: '4号楼' },
+  { value: '5', label: '5号楼' },
 ])
 
 // 门牌号选项（根据楼号动态变化）
 const doorOptions = computed(() => {
   if (!registerForm.value.buildingNumber) return []
 
-  const base = parseInt(registerForm.value.buildingNumber) * 100
   return [
-    { value: `${base + 1}`, label: `${base + 1}室` },
-    { value: `${base + 2}`, label: `${base + 2}室` },
-    { value: `${base + 3}`, label: `${base + 3}室` },
-    { value: `${base + 4}`, label: `${base + 4}室` },
+    { value: '101', label: '101室' },
+    { value: '102', label: '102室' },
+    { value: '103', label: '103室' },
+    { value: '201', label: '201室' },
+    { value: '202', label: '202室' },
+    { value: '203', label: '203室' },
+    { value: '301', label: '301室' },
+    { value: '302', label: '302室' },
+    { value: '303', label: '303室' },
+    { value: '401', label: '401室' },
+    { value: '402', label: '402室' },
+    { value: '403', label: '403室' },
+    { value: '501', label: '501室' },
+    { value: '502', label: '502室' },
+    { value: '503', label: '503室' },
+
   ]
 })
 
